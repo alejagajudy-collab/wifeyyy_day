@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Love Quest ❤️</title>
+<style>
+:root{--ink:#5b3a6e;--pink:#ff7aa8;--deep:#d9568a;--lav:#e9d5f5;--cream:#fff6fb}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--lav);font-family:"Trebuchet MS",system-ui,sans-serif;color:var(--ink);touch-action:none;user-select:none;-webkit-user-select:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:20px;background:rgba(233,213,245,.94);transition:opacity .5s;z-index:5;overflow-y:auto}
+.hidden{opacity:0;pointer-events:none}
+.hidden:not(.screen){display:none}
+h1{font-size:clamp(30px,7vw,56px);color:var(--pink);text-shadow:2px 2px 0 #fff}
+h2{font-size:clamp(22px,5vw,34px);color:var(--deep)}
+p.sub{font-style:italic;max-width:520px;line-height:1.5}
+button{font:inherit;font-weight:bold;background:var(--pink);color:#fff;border:0;border-radius:24px;padding:12px 24px;cursor:pointer;box-shadow:0 4px 0 var(--deep);margin:4px;transition:transform .15s}
+button:hover{transform:translateY(-2px)}
+button:active{transform:translateY(3px);box-shadow:none}
+.card{background:var(--cream);border-radius:22px;padding:26px 22px;max-width:420px;width:90%;box-shadow:0 0 30px #ff9ccc;animation:pop .45s ease}
+@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.big{font-size:54px;animation:bob 1.6s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-8px)}}
+#hud{position:fixed;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:flex-start;z-index:3;pointer-events:none}
+.pill{background:rgba(255,255,255,.85);border-radius:16px;padding:8px 14px;font-weight:bold;color:var(--deep);box-shadow:0 2px 0 #e7b6d4}
+#pauseBtn{pointer-events:auto;margin:0;padding:8px 14px;box-shadow:0 2px 0 var(--deep)}
+#barWrap{position:fixed;top:64px;left:50%;transform:translateX(-50%);width:min(260px,60vw);height:12px;background:rgba(255,255,255,.7);border-radius:8px;overflow:hidden;z-index:3;border:2px solid #fff}
+#fill{height:100%;width:0;background:linear-gradient(90deg,#ff9cc6,#ff5c93);transition:width .5s}
+#hint{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.85);padding:8px 16px;border-radius:14px;font-size:14px;z-index:3;transition:opacity 1s;white-space:nowrap}
+#dpad{position:fixed;bottom:16px;right:16px;width:156px;height:156px;display:none;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr;gap:4px;z-index:4}
+#dpad button{margin:0;padding:0;border-radius:18px;font-size:22px;box-shadow:0 3px 0 var(--deep);opacity:.9}
+@media (pointer:coarse){#dpad{display:grid}}
+#dpad .u{grid-column:2;grid-row:1}#dpad .l{grid-column:1;grid-row:2}#dpad .r{grid-column:3;grid-row:2}#dpad .d{grid-column:2;grid-row:3}
+#how{max-width:420px;line-height:1.6;display:none}
+#letter{background:#fff;border-radius:14px;padding:20px;max-width:440px;text-align:left;white-space:pre-line;line-height:1.6;font-family:Georgia,serif;font-size:16px;max-height:55vh;overflow-y:auto}
+#env{font-size:90px;cursor:pointer;transition:transform .4s}
+#env:hover{transform:scale(1.08) rotate(-3deg)}
+#reveal{opacity:0;transition:opacity 1.5s;max-width:480px;line-height:1.6}
+#cake{font-size:80px;animation:bob 1.2s ease-in-out infinite}
+.glow{text-shadow:0 0 12px #ff9cc6,0 0 26px #ff5c93;font-size:clamp(26px,6vw,42px);color:#fff;animation:glow 1.5s infinite alternate}
+@keyframes glow{to{text-shadow:0 0 22px #fff,0 0 40px #ff5c93}}
+.step{display:none;flex-direction:column;align-items:center;gap:12px}
+.step.on{display:flex;animation:pop .6s ease}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud">
+  <div class="pill">Love Quest ❤️</div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <div class="pill" id="count">❤️ 0 / 10</div>
+    <button id="pauseBtn" aria-label="Pause">❚❚</button>
+  </div>
+</div>
+<div id="barWrap"><div id="fill"></div></div>
+<div id="hint">Collect all 10 hearts to unlock your birthday surprise! 💕</div>
+<div id="dpad">
+  <button class="u" data-d="u">▲</button>
+  <button class="l" data-d="l">◀</button>
+  <button class="r" data-d="r">▶</button>
+  <button class="d" data-d="d">▼</button>
+</div>
+
+<!-- Welcome -->
+<div class="screen" id="welcome">
+  <div class="big">💖</div>
+  <h1 id="wTitle">Love Quest ❤️</h1>
+  <h2 style="font-size:20px;color:var(--ink)">A Little Adventure Made Just for You</h2>
+  <p class="sub">Somewhere in this little world, I've hidden 10 pieces of my heart. Collect them all, and a special surprise will be waiting for you.</p>
+  <button id="startBtn">Start Adventure 🌸</button>
+  <button id="howBtn">How to Play</button>
+  <p id="how">Move with W A S D or the arrow keys, or use the on-screen buttons on a phone. Touch each glowing heart to read a little message from me. Press P or the ❚❚ button to pause.</p>
+  <button id="soundBtnW">Sound: On</button>
+</div>
+
+<!-- Pause -->
+<div class="screen hidden" id="pause">
+  <h2>Paused 💤</h2>
+  <button id="resumeBtn">Resume</button>
+  <button id="restartBtn">Restart Game 🔄</button>
+  <button id="soundBtnP">Sound: On</button>
+</div>
+
+<!-- Heart popup -->
+<div class="screen hidden" id="popup">
+  <div class="card">
+    <div class="big">💗</div>
+    <p id="msg" style="font-size:20px;line-height:1.5;margin:14px 0"></p>
+    <button id="cont">Continue 💕</button>
+  </div>
+</div>
+
+<!-- Ending -->
+<div class="screen hidden" id="ending">
+  <div class="step" id="s1">
+    <div class="big">❤️</div>
+    <h1>YOU COLLECTED ALL MY HEARTS! ❤️</h1>
+  </div>
+  <div class="step" id="s2">
+    <h1 id="bdayTitle">Happy Birthday, My Love! 🎂💕</h1>
+    <p class="sub">You found all 10 hearts, but there's something I haven't told you yet...</p>
+    <p id="reveal">Every heart you collected represents a little piece of my love for you. But the truth is, no amount of hearts could ever show how much you mean to me.</p>
+    <button id="toEnv" style="opacity:0;transition:opacity 1s">Open my surprise 💌</button>
+  </div>
+  <div class="step" id="s3">
+    <div id="env">💌</div>
+    <p class="sub">Tap the envelope</p>
+    <div id="letter" style="display:none"></div>
+    <button id="toCake" style="display:none">Celebrate 🎉</button>
+  </div>
+  <div class="step" id="s4">
+    <div id="cake">🎂</div>
+    <div class="glow">Happy Birthday, Wifey! 🎂💕</div>
+    <button id="toFinal">Finish 💖</button>
+  </div>
+  <div class="step" id="s5">
+    <h1>GAME COMPLETED! 💖</h1>
+    <p>Achievement Unlocked: You Own My Heart Forever.</p>
+    <button id="reread">Read My Letter Again</button>
+    <button id="replay">Play Again 🌷</button>
+  </div>
+</div>
+
+<script>
+/* ===================== CONFIG (edit me) ===================== */
+const CONFIG = {
+  girlfriendName: "Wifey",
+  gameTitle: "Love Quest",
+  totalHearts: 10,
+  playerSpeed: 150
+};
+const MESSAGES = [
+  "Every moment with you is my favorite moment. ❤️",
+  "You make even my ordinary days feel magical. 🌸",
+  "If I could choose anyone in the world, I'd still choose you. 💗",
+  "Your smile will always be one of my favorite things. 🥰",
+  "Thank you for being my happiness and my safe place. 💕",
+  "No matter how many levels life has, I want to play them all with you. 🎮",
+  "You're my favorite notification, my favorite person, and my favorite hello. 💌",
+  "Being with you is the best adventure I've ever started. 🌷",
+  "If our love were a game, I'd never want it to end. 💖",
+  "Ten hearts collected, but you already have my whole heart. ❤️"
+];
+const LETTER = `Happy Birthday, Wifeyyy! ❤️
+I wanted to make something special for you, something that comes from my heart.
+Every line of code, every little heart, and every detail in this game was made with you in mind.
+Thank you for being part of my life, for making me smile, and for giving me so many beautiful memories.
+I hope this little game makes you as happy as you make me.
+I love you, so muchieee!!! ❤️`;
+
+/* ===================== WORLD ===================== */
+const WORLD = { w: 1600, h: 1100 };
+const OBS = [
+  {x:120,y:120,w:70,h:60,t:'tree'},{x:1380,y:130,w:70,h:60,t:'tree'},
+  {x:1400,y:820,w:70,h:60,t:'tree'},{x:160,y:860,w:70,h:60,t:'tree'},
+  {x:520,y:330,w:260,h:170,t:'pond'},{x:1050,y:640,w:180,h:120,t:'pond'},
+  {x:860,y:300,w:90,h:30,t:'bench'},{x:300,y:560,w:90,h:30,t:'bench'},{x:1240,y:380,w:90,h:30,t:'bench'},
+  {x:720,y:850,w:50,h:40,t:'rock'},{x:700,y:120,w:60,h:40,t:'bush'},{x:1000,y:920,w:70,h:40,t:'bush'}
+];
+const HEART_POS = [[300,260],[700,250],[1000,200],[1450,300],[880,460],[420,700],[1280,700],[1000,1000],[160,1000],[1480,1000]];
+const HEARTS = HEART_POS.slice(0, CONFIG.totalHearts).map((h,i)=>({x:h[0],y:h[1],i}));
+const START = {x:780,y:620};
+const SPR = ["..hhhhhh..",".hhhhhhhh.",".hhssssh..",".hsessesh..","..ssmmss..","...ssss...",".pddddddp.","pddddddddp","pddddddddp",".pddddddp.","..pddddp..","..bb..bb.."];
+const LEG_B = ".bb....bb.";
+const COL = {h:'#6b3f2a',s:'#ffe1cf',e:'#3b2540',m:'#ff6f9c',d:'#ffb3d1',p:'#e77fae',b:'#7d4f6e'};
+
+/* ===================== SAVE ===================== */
+const KEY = 'loveQuest.v1';
+let save = {collected:[], sound:true, x:START.x, y:START.y, completed:false};
+try {
+  const s = JSON.parse(localStorage.getItem(KEY));
+  if (s && typeof s === 'object') {
+    if (Array.isArray(s.collected)) save.collected = s.collected.filter(i => Number.isInteger(i) && i >= 0 && i < CONFIG.totalHearts);
+    if (typeof s.sound === 'boolean') save.sound = s.sound;
+    if (Number.isFinite(s.x) && Number.isFinite(s.y)) { save.x = s.x; save.y = s.y; }
+    save.completed = !!s.completed;
+  }
+} catch (e) { /* corrupted or missing: use defaults */ }
+function persist(){ try { localStorage.setItem(KEY, JSON.stringify(save)); } catch(e){} }
+
+/* ===================== STATE ===================== */
+const $ = id => document.getElementById(id);
+const cv = $('c'), ctx = cv.getContext('2d');
+let DPR = 1, W = 0, H = 0, S = 1;
+let state = 'welcome', sound = save.sound, t = 0;
+const collected = new Set(save.collected);
+const p = {x:save.x, y:save.y, face:1, walk:0, moving:false};
+const cam = {x:0, y:0};
+const held = {u:false,d:false,l:false,r:false};
+let particles = [], confetti = [], petals = [], flowers = [];
+const butterflies = Array.from({length:6},(_,i)=>({bx:200+i*230,by:200+(i%3)*300,ph:i*1.7,c:['#ffd1e8','#d6c2ff','#ffe3b3'][i%3]}));
+
+function resize(){
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = innerWidth; H = innerHeight;
+  cv.width = Math.floor(W * DPR); cv.height = Math.floor(H * DPR);
+  S = Math.max(1, Math.min(3, Math.min(W / 480, H / 300)));
+}
+addEventListener('resize', resize);
+resize();
+
+/* Flowers generated once, avoiding obstacles */
+(function makeFlowers(){
+  const cols = ['#ffffff','#ffb3d9','#ffe0a8','#d7b8ff','#fff0a0'];
+  for (let n = 0; n < 260; n++) {
+    const x = 20 + Math.random()*(WORLD.w-40), y = 20 + Math.random()*(WORLD.h-40);
+    if (OBS.some(o => x > o.x-12 && x < o.x+o.w+12 && y > o.y-12 && y < o.y+o.h+12)) continue;
+    flowers.push({x, y, c: cols[n % cols.length], ph: Math.random()*6});
+  }
+})();
+
+/* ===================== AUDIO (Web Audio, no files) ===================== */
+let AC = null;
+function audio(){
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
+  if (AC && AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function tone(f, d=0.15, type='sine', v=0.12, when=0){
+  if (!sound) return;
+  const a = audio(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain();
+  const st = a.currentTime + when;
+  o.type = type; o.frequency.value = f;
+  g.gain.setValueAtTime(v, st);
+  g.gain.exponentialRampToValueAtTime(0.0001, st + d);
+  o.connect(g); g.connect(a.destination);
+  o.start(st); o.stop(st + d + 0.05);
+}
+const SFX = {
+  click:()=>tone(660,0.08,'sine',0.1),
+  pop:()=>tone(880,0.12,'sine',0.1),
+  collect:()=>[523,659,784,1046].forEach((f,i)=>tone(f,0.2,'triangle',0.15,i*0.08)),
+  win:()=>[523,659,784,1046,1318].forEach((f,i)=>tone(f,0.4,'triangle',0.14,i*0.14))
+};
+const MELODY = [196,220,262,220,196,165,175,196];
+let mi = 0;
+setInterval(()=>{ if (sound && state === 'play') { tone(MELODY[mi % MELODY.length], 0.35, 'triangle', 0.05); mi++; } }, 420);
+
+/* ===================== HELPERS ===================== */
+function blocked(x, y){
+  if (x - 9 < 0 || y - 6 < 0 || x + 9 > WORLD.w || y + 6 > WORLD.h) return true;
+  for (const o of OBS) if (x + 9 > o.x && x - 9 < o.x + o.w && y + 6 > o.y && y - 6 < o.y + o.h) return true;
+  return false;
+}
+function burst(x, y, n=14, colors=['#ff7aa8','#ffb3d1','#ffffff','#ffd1e8']){
+  for (let i = 0; i < n; i++){
+    const a = Math.random()*Math.PI*2, sp = 40 + Math.random()*80;
+    particles.push({x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp - 30, life:0.9+Math.random()*0.5, max:1.4, c:colors[i%colors.length]});
+  }
+}
+function heartPath(x, y, s){
+  ctx.beginPath();
+  ctx.moveTo(x, y + s*0.7);
+  ctx.bezierCurveTo(x - s*0.9, y + s*0.2, x - s*0.6, y - s*0.8, x, y - s*0.3);
+  ctx.bezierCurveTo(x + s*0.6, y - s*0.8, x + s*0.9, y + s*0.2, x, y + s*0.7);
+  ctx.closePath();
+}
+function updateHUD(){
+  $('count').textContent = `❤️ ${collected.size} / ${CONFIG.totalHearts}`;
+  $('fill').style.width = (collected.size / CONFIG.totalHearts * 100) + '%';
+}
+updateHUD();
+
+/* ===================== UPDATE ===================== */
+function step(axis, amt){
+  if (axis === 'x') { const nx = p.x + amt; if (!blocked(nx, p.y)) p.x = nx; }
+  else { const ny = p.y + amt; if (!blocked(p.x, ny)) p.y = ny; }
+}
+function update(dt){
+  t += dt;
+  if (state === 'play') {
+    let dx = (held.r?1:0) - (held.l?1:0), dy = (held.d?1:0) - (held.u?1:0);
+    if (dx && dy) { dx *= 0.707; dy *= 0.707; }
+    if (dx) p.face = dx > 0 ? 1 : -1;
+    p.moving = !!(dx || dy);
+    if (p.moving) p.walk += dt * 9;
+    step('x', dx * CONFIG.playerSpeed * dt);
+    step('y', dy * CONFIG.playerSpeed * dt);
+    for (const h of HEARTS) {
+      if (!collected.has(h.i) && Math.hypot(h.x - p.x, h.y - (p.y - 8)) < 34) collectHeart(h);
+    }
+    const viewW = W / S, viewH = H / S;
+    const tx = Math.max(0, Math.min(WORLD.w - viewW, p.x - viewW/2));
+    const ty = Math.max(0, Math.min(WORLD.h - viewH, p.y - viewH/2));
+    const k = 1 - Math.exp(-dt * 7);
+    cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k;
+    if (Math.random() < dt * 3) petals.push({x: cam.x + Math.random()*viewW, y: cam.y - 10, sw: Math.random()*6, vy: 18 + Math.random()*14, c: Math.random()<0.5?'#ffc2dd':'#ffe0ef'});
+  }
+  if (state === 'ending') {
+    if (Math.random() < 0.04) burst(cam.x + Math.random()*(W/S), cam.y + Math.random()*(H/S)*0.6, 18);
+    if (Math.random() < 0.5) confetti.push({x:Math.random()*W, y:-10, vy:80+Math.random()*120, sw:Math.random()*6, c:['#ff7aa8','#ffd36b','#b9a4ff','#8fe3c4','#ffffff'][Math.floor(Math.random()*5)]});
+  }
+  for (const q of particles) { q.x += q.vx*dt; q.y += q.vy*dt; q.vy += 60*dt; q.life -= dt; }
+  particles = particles.filter(q => q.life > 0);
+  for (const f of petals) { f.y += f.vy*dt; f.x += Math.sin(t*1.5 + f.sw)*12*dt; }
+  petals = petals.filter(f => f.y < cam.y + H/S + 20);
+  for (const c of confetti) { c.y += c.vy*dt; }
+  confetti = confetti.filter(c => c.y < H + 20);
+}
+
+function collectHeart(h){
+  collected.add(h.i);
+  save.collected = [...collected];
+  persist();
+  burst(h.x, h.y, 22);
+  SFX.collect();
+  updateHUD();
+  $('hint').style.opacity = 0;
+  showPopup(h.i);
+}
+
+/* ===================== RENDER ===================== */
+function drawWorld(){
+  const viewW = W/S, viewH = H/S, T = 80;
+  // ground checker (garden)
+  const sx = Math.floor(cam.x/T)*T, sy = Math.floor(cam.y/T)*T;
+  for (let x = sx; x < cam.x + viewW + T; x += T)
+    for (let y = sy; y < cam.y + viewH + T; y += T) {
+      ctx.fillStyle = ((x+y)/T) % 2 ? '#f6dcef' : '#f0cde8';
+      ctx.fillRect(x, y, T, T);
+    }
+  // paths
+  ctx.fillStyle = '#fff3e4';
+  ctx.fillRect(0, 520, WORLD.w, 60);
+  ctx.fillRect(760, 0, 60, WORLD.h);
+  // flowers
+  for (const f of flowers) {
+    if (f.x < cam.x-20 || f.x > cam.x+viewW+20 || f.y < cam.y-20 || f.y > cam.y+viewH+20) continue;
+    const sway = Math.sin(t*1.5 + f.ph) * 0.8;
+    ctx.fillStyle = '#9fd3a8'; ctx.fillRect(f.x+sway, f.y, 1.5, 6);
+    ctx.fillStyle = f.c;
+    for (let k = 0; k < 5; k++) { const a = k*Math.PI*2/5; ctx.beginPath(); ctx.arc(f.x+sway+Math.cos(a)*2.4, f.y+Math.sin(a)*2.4, 1.8, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#ffe26b'; ctx.fillRect(f.x+sway-0.8, f.y-0.8, 1.6, 1.6);
+  }
+  // obstacles
+  for (const o of OBS) drawObstacle(o);
+  // hearts
+  for (const h of HEARTS) {
+    if (collected.has(h.i)) continue;
+    const pulse = 1 + Math.sin(t*4 + h.i) * 0.08;
+    const bob = Math.sin(t*2 + h.i*0.7) * 4;
+    const glow = ctx.createRadialGradient(h.x, h.y+bob, 2, h.x, h.y+bob, 32);
+    glow.addColorStop(0, 'rgba(255,140,190,0.55)'); glow.addColorStop(1, 'rgba(255,140,190,0)');
+    ctx.fillStyle = glow; ctx.fillRect(h.x-34, h.y+bob-34, 68, 68);
+    ctx.fillStyle = 'rgba(90,50,80,0.25)'; ctx.beginPath(); ctx.ellipse(h.x, h.y+16, 9, 3, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ff4f86'; heartPath(h.x, h.y+bob, 10*pulse); ctx.fill();
+    ctx.fillStyle = '#ffd6e6'; ctx.fillRect(h.x-5, h.y+bob-5, 2, 2);
+    const sp = (t*0.9 + h.i) % 1;
+    ctx.fillStyle = '#fff'; ctx.fillRect(h.x + Math.cos(h.i+t)*16, h.y+bob-sp*18, 2, 2);
+  }
+  // butterflies
+  for (const b of butterflies) {
+    const x = b.bx + Math.cos(t*0.5 + b.ph)*70, y = b.by + Math.sin(t*0.8 + b.ph)*45;
+    const flap = Math.abs(Math.sin(t*12 + b.ph));
+    ctx.fillStyle = b.c;
+    ctx.beginPath(); ctx.ellipse(x-3, y, 4*flap+1, 3, -0.4, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x+3, y, 4*flap+1, 3, 0.4, 0, 7); ctx.fill();
+    ctx.fillStyle = '#6b4b7e'; ctx.fillRect(x-0.5, y-2, 1, 4);
+  }
+  // falling petals
+  for (const f of petals) { ctx.fillStyle = f.c; ctx.beginPath(); ctx.ellipse(f.x, f.y, 2.5, 1.5, t+f.sw, 0, 7); ctx.fill(); }
+  // player
+  drawPlayer();
+  // particles
+  for (const q of particles) {
+    ctx.globalAlpha = Math.max(0, q.life / q.max);
+    ctx.fillStyle = q.c; heartPath(q.x, q.y, 5); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+function drawObstacle(o){
+  if (o.t === 'tree') {
+    ctx.fillStyle = '#b5808a'; ctx.fillRect(o.x+o.w*0.42, o.y+o.h*0.45, o.w*0.16, o.h*0.55);
+    ctx.fillStyle = '#ffb3cf';
+    [[0.5,0.35,0.42],[0.25,0.5,0.3],[0.75,0.5,0.3],[0.5,0.6,0.34]].forEach(([cx,cy,r]) => { ctx.beginPath(); ctx.arc(o.x+o.w*cx, o.y+o.h*cy, o.w*r, 0, 7); ctx.fill(); });
+    ctx.fillStyle = '#ffe0ec'; ctx.beginPath(); ctx.arc(o.x+o.w*0.4, o.y+o.h*0.3, o.w*0.12, 0, 7); ctx.fill();
+  } else if (o.t === 'pond') {
+    ctx.fillStyle = '#fff'; ctx.fillRect(o.x-4, o.y-4, o.w+8, o.h+8);
+    ctx.fillStyle = '#a9dcf2'; ctx.fillRect(o.x, o.y, o.w, o.h);
+    ctx.fillStyle = '#c8ecff'; ctx.fillRect(o.x+12, o.y+12, o.w-40, 8);
+    const sh = Math.sin(t*2)*2;
+    ctx.fillStyle = '#8fd39a'; ctx.beginPath(); ctx.ellipse(o.x+o.w*0.25, o.y+o.h*0.7+sh, 9, 4, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ff9cc6'; ctx.beginPath(); ctx.arc(o.x+o.w*0.25+2, o.y+o.h*0.7+sh-2, 2.5, 0, 7); ctx.fill();
+  } else if (o.t === 'bench') {
+    ctx.fillStyle = '#7d4f6e'; ctx.fillRect(o.x+4, o.y+o.h, 5, 10); ctx.fillRect(o.x+o.w-9, o.y+o.h, 5, 10);
+    ctx.fillStyle = '#e8b7a8'; ctx.fillRect(o.x, o.y, o.w, o.h*0.45); ctx.fillRect(o.x, o.y+o.h*0.55, o.w, o.h*0.45);
+    ctx.fillStyle = '#fff'; ctx.fillRect(o.x, o.y, o.w, 2);
+  } else if (o.t === 'rock') {
+    ctx.fillStyle = '#c9b6d8'; ctx.beginPath(); ctx.ellipse(o.x+o.w/2, o.y+o.h/2, o.w/2, o.h/2, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#e6d9f0'; ctx.beginPath(); ctx.ellipse(o.x+o.w*0.4, o.y+o.h*0.35, o.w*0.18, o.h*0.12, 0, 0, 7); ctx.fill();
+  } else if (o.t === 'bush') {
+    ctx.fillStyle = '#b8e6c4';
+    [[0.25,0.6,0.3],[0.5,0.45,0.36],[0.75,0.6,0.3]].forEach(([cx,cy,r]) => { ctx.beginPath(); ctx.arc(o.x+o.w*cx, o.y+o.h*cy, o.h*r, 0, 7); ctx.fill(); });
+    ctx.fillStyle = '#ffb3d9';
+    [[0.35,0.5],[0.6,0.4],[0.7,0.65]].forEach(([cx,cy]) => { ctx.beginPath(); ctx.arc(o.x+o.w*cx, o.y+o.h*cy, 2.5, 0, 7); ctx.fill(); });
+  }
+}
+function drawPlayer(){
+  const px = 2.5, bob = p.moving ? Math.abs(Math.sin(p.walk))*1.5 : Math.sin(t*2)*0.6;
+  const rows = SPR.slice();
+  rows[11] = p.moving && Math.floor(p.walk) % 2 ? LEG_B : SPR[11];
+  ctx.fillStyle = 'rgba(90,50,80,0.25)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, 10, 3.5, 0, 0, 7); ctx.fill();
+  ctx.save();
+  ctx.translate(p.x, p.y - bob);
+  ctx.scale(p.face, 1);
+  rows.forEach((row, r) => {
+    for (let c = 0; c < row.length; c++) {
+      const ch = row[c]; if (ch === '.') continue;
+      ctx.fillStyle = COL[ch] || '#000';
+      ctx.fillRect(-12.5 + c*px, -31 + r*px, px, px);
+    }
+  });
+  ctx.restore();
+}
+function render(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#f4d9f5'); g.addColorStop(1,'#e8c9ef');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  ctx.setTransform(DPR*S,0,0,DPR*S,-cam.x*DPR*S,-cam.y*DPR*S);
+  drawWorld();
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  for (const c of confetti) { ctx.fillStyle = c.c; ctx.fillRect(c.x + Math.sin(t*3+c.sw)*10, c.y, 7, 4); }
+}
+
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  update(dt); render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ===================== INPUT ===================== */
+const KEYMAP = {w:'u',ArrowUp:'u',s:'d',ArrowDown:'d',a:'l',ArrowLeft:'l',d:'r',ArrowRight:'r'};
+addEventListener('keydown', e => {
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (KEYMAP[k]) { held[KEYMAP[k]] = true; e.preventDefault(); }
+  if ((k === 'p' || k === 'Escape') && state === 'play') pauseGame();
+  else if ((k === 'p' || k === 'Escape') && state === 'pause') resumeGame();
+});
+addEventListener('keyup', e => {
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (KEYMAP[k]) held[KEYMAP[k]] = false;
+});
+addEventListener('blur', () => { for (const k in held) held[k] = false; });
+document.querySelectorAll('#dpad button').forEach(b => {
+  const d = b.dataset.d;
+  const on = e => { e.preventDefault(); held[d] = true; };
+  const off = e => { e.preventDefault(); held[d] = false; };
+  b.addEventListener('pointerdown', on);
+  b.addEventListener('pointerup', off);
+  b.addEventListener('pointercancel', off);
+  b.addEventListener('pointerleave', off);
+  b.addEventListener('contextmenu', e => e.preventDefault());
+});
+document.addEventListener('touchmove', e => { if (state === 'play') e.preventDefault(); }, {passive:false});
+
+/* ===================== SCREENS ===================== */
+function show(id){ $(id).classList.remove('hidden'); }
+function hide(id){ $(id).classList.add('hidden'); }
+
+function startGame(){
+  audio(); SFX.click();
+  hide('welcome');
+  if (collected.size >= CONFIG.totalHearts && !save.completed) return startEnding();
+  state = 'play';
+  $('hint').style.opacity = collected.size ? 0 : 1;
+  setTimeout(() => $('hint').style.opacity = 0, 6000);
+}
+function pauseGame(){ if (state !== 'play') return; state = 'pause'; held.u=held.d=held.l=held.r=false; show('pause'); persist(); }
+function resumeGame(){ SFX.click(); hide('pause'); state = 'play'; }
+function restartProgress(){
+  collected.clear(); save.collected = []; save.completed = false;
+  p.x = START.x; p.y = START.y; save.x = p.x; save.y = p.y;
+  persist(); updateHUD(); particles = []; confetti = [];
+  $('hint').style.opacity = 1; setTimeout(() => $('hint').style.opacity = 0, 5000);
+}
+function setSound(v){
+  sound = v; save.sound = v; persist();
+  const label = 'Sound: ' + (v ? 'On' : 'Off');
+  $('soundBtnW').textContent = label; $('soundBtnP').textContent = label;
+  if (v) SFX.click();
+}
+
+let pendingPopupIndex = null;
+function showPopup(i){
+  state = 'popup';
+  $('msg').textContent = MESSAGES[i] || MESSAGES[0];
+  show('popup'); SFX.pop();
+}
+$('cont').addEventListener('click', () => {
+  SFX.click(); hide('popup');
+  if (collected.size >= CONFIG.totalHearts) startEnding();
+  else state = 'play';
+});
+
+/* Ending sequence */
+let endTimers = [];
+function showStep(id){
+  document.querySelectorAll('#ending .step').forEach(s => s.classList.remove('on'));
+  $(id).classList.add('on');
+}
+function startEnding(){
+  state = 'ending';
+  save.completed = true; persist();
+  $('bdayTitle').textContent = `Happy Birthday, ${CONFIG.girlfriendName}! 🎂💕`;
+  $('reveal').style.opacity = 0; $('toEnv').style.opacity = 0;
+  $('letter').style.display = 'none'; $('toCake').style.display = 'none'; $('env').textContent = '💌';
+  show('ending'); showStep('s1'); SFX.win();
+  burst(p.x, p.y, 40);
+  endTimers.forEach(clearTimeout); endTimers = [];
+  endTimers.push(setTimeout(() => { showStep('s2'); }, 3500));
+  endTimers.push(setTimeout(() => { $('reveal').style.opacity = 1; }, 4800));
+  endTimers.push(setTimeout(() => { $('toEnv').style.opacity = 1; }, 8000));
+}
+$('toEnv').addEventListener('click', () => { SFX.click(); showStep('s3'); });
+let letterOpen = false;
+function openEnvelope(){
+  SFX.pop(); $('env').textContent = '💖';
+  if (letterOpen) return; letterOpen = true;
+  $('letter').textContent = LETTER; $('letter').style.display = 'block';
+  $('toCake').style.display = 'inline-block';
+}
+$('env').addEventListener('click', openEnvelope);
+$('toCake').addEventListener('click', () => { SFX.click(); showStep('s4'); });
+$('toFinal').addEventListener('click', () => { SFX.click(); showStep('s5'); });
+$('reread').addEventListener('click', () => { SFX.click(); showStep('s3'); letterOpen = true; $('letter').style.display='block'; $('letter').textContent = LETTER; $('toCake').style.display='inline-block'; $('env').textContent = '💖'; });
+$('replay').addEventListener('click', () => {
+  SFX.click(); hide('ending'); endTimers.forEach(clearTimeout); endTimers = [];
+  letterOpen = false; restartProgress(); state = 'play';
+});
+
+/* Welcome, pause and menu buttons */
+$('startBtn').addEventListener('click', startGame);
+$('howBtn').addEventListener('click', () => { SFX.click(); const h = $('how'); h.style.display = h.style.display === 'block' ? 'none' : 'block'; });
+$('soundBtnW').addEventListener('click', () => setSound(!sound));
+$('soundBtnP').addEventListener('click', () => setSound(!sound));
+$('pauseBtn').addEventListener('click', () => { state === 'play' ? pauseGame() : (state === 'pause' && resumeGame()); });
+$('resumeBtn').addEventListener('click', resumeGame);
+$('restartBtn').addEventListener('click', () => { SFX.click(); restartProgress(); hide('pause'); state = 'play'; });
+
+setSound(sound);
+setInterval(() => { if (state === 'play') { save.x = p.x; save.y = p.y; persist(); } }, 2000);
+</script>
+</body>
+</html>
